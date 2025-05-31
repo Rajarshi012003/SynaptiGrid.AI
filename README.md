@@ -1,8 +1,4 @@
-Here’s a **redesigned, visually enhanced README** for your Home Energy Management System (HEMS) project. This version includes **icons, emojis, and visual structure** for better readability and aesthetics, using markdown and GitHub-compatible emoji/icons where applicable.
-
----
-
-# ⚡ Home Energy Management System (HEMS)
+# 🏡⚡ Home Energy Management System (HEMS)
 
 A sophisticated controller powered by **Spiking Neural Networks (SNN)** and **Reinforcement Learning (RL)** to optimize home energy usage, comfort, and environmental sustainability.
 
