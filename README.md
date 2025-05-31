@@ -202,7 +202,3 @@ Licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for detail
 ## 🙏 Acknowledgments
 
 This system is built on the **HEMS PLAN REPORT**, which proposes a unified mathematical framework for energy optimization using **SNN** and **RL** techniques.
-
----
-
-Would you like a version of this README exported as a **PDF** or **HTML preview**? I can also help you create **GitHub badges**, **animated SNN diagrams**, or a **project logo** if needed.
