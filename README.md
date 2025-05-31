@@ -163,18 +163,56 @@ python test_model.py --model logs/run_20250531_135517/td3_hems_best.zip
 
 ```bash
 .
-├── rl_environment.py          # Energy & thermal dynamics
-├── rl_agent.py                # TD3 policy agent
-├── snn_model.py               # Spiking Neural Network
-├── data_processor.py          # Preprocessing logic
-├── hems_dashboard.py          # Interactive UI
-├── train_optimized.py         # Custom training script
-├── train_model.sh             # Quick training launcher
-├── run_dashboard.sh           # UI launcher
-├── test_model.py              # Evaluation tools
-├── hems_data_final.csv        # Dataset used
-├── logs/                      # Model logs & checkpoints
-└── results/                   # Visualizations & plots
+├── hems/                      # Main package
+│   ├── __init__.py            # Package initialization
+│   ├── rl_environment.py      # HEMS environment with dynamics modeling
+│   ├── rl_agent.py            # TD3 agent implementation
+│   ├── snn_model.py           # Spiking Neural Network model
+│   ├── data_processor.py      # Data preprocessing utilities
+│   └── utils/                 # Utility functions
+├── tests/                     # Test directory
+│   ├── __init__.py            # Test package initialization
+│   ├── test_rl_env.py         # Tests for RL environment
+│   ├── test_rl_agent.py       # Tests for RL agent
+│   ├── test_snn_model.py      # Tests for SNN model
+│   └── test_data_processor.py # Tests for data processor
+├── scripts/                   # Utility scripts
+│   ├── __init__.py            # Scripts package initialization
+│   ├── train_model.py         # Training script
+│   ├── train.sh               # Training shell script
+│   └── run.sh                 # Dashboard runner script
+├── hems_dashboard.py          # Streamlit dashboard
+├── hems_data_final.csv        # Dataset for training and evaluation
+├── setup.py                   # Package installation
+├── setup.cfg                  # Package configuration
+├── pyproject.toml             # Build system configuration
+├── logs/                      # Training logs and saved models
+└── results/                   # Evaluation results and visualizations
+```
+
+## Installation as a Package
+
+You can install the HEMS package for development:
+
+```bash
+# Clone the repository
+git clone https://github.com/Rajarshi012003/SynaptiGridAI.git
+cd SynaptiGridAI
+
+# Install in development mode
+pip install -e .
+```
+
+Then import the package in your code:
+
+```python
+# Import components
+from hems import HEMSEnvironment, SNN_Model
+from hems import train_rl_agent, evaluate_rl_agent
+
+# Use the components
+env = HEMSEnvironment(...)
+model = train_rl_agent(env, ...)
 ```
 
 ---
@@ -198,3 +236,7 @@ Licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for detail
 ## 🙏 Acknowledgments
 
 This system is built on the **HEMS PLAN REPORT**, which proposes a unified mathematical framework for energy optimization using **SNN** and **RL** techniques.
+
+---
+
+Would you like a version of this README exported as a **PDF** or **HTML preview**? I can also help you create **GitHub badges**, **animated SNN diagrams**, or a **project logo** if needed.
