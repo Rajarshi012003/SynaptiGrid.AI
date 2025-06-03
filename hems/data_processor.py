@@ -1,5 +1,5 @@
 """
-data preprocessing, normalization, and preparation 
+Making the data ready!!!
 """
 
 import pandas as pd
@@ -39,7 +39,6 @@ class HEMSDataProcessor:
         self.processed_data['Battery_Charge'].fillna(0, inplace=True)
         self.processed_data['Battery_Discharge'].fillna(0, inplace=True)
         
-        # Handle Net_Consumption 
         if self.processed_data['Net_Consumption'].isnull().sum() > 0:
             self.processed_data['Net_Consumption'] = (
                 self.processed_data['Total_Consumption'] - 
@@ -47,13 +46,11 @@ class HEMSDataProcessor:
             )
         
         
-        # time features
         self.processed_data['Hour'] = self.processed_data['Timestamp'].dt.hour
         self.processed_data['Day'] = self.processed_data['Timestamp'].dt.day
         self.processed_data['Month'] = self.processed_data['Timestamp'].dt.month
         self.processed_data['DayOfWeek'] = self.processed_data['Timestamp'].dt.dayofweek
         
-        # energy consumption features
         self.processed_data['Shiftable_Load'] = (
             self.processed_data['Dishwasher'] + 
             self.processed_data['Washing_Machine'] + 
@@ -65,7 +62,6 @@ class HEMSDataProcessor:
             self.processed_data['Lighting']
         )
         
-        # power balance
         self.processed_data['Power_Balance'] = (
             self.processed_data['Total_Consumption'] - 
             self.processed_data['PV_Generation'] + 
@@ -73,7 +69,7 @@ class HEMSDataProcessor:
             self.processed_data['Battery_Charge']
         )
         
-        #  (indoor-outdoor) temps
+        #  (indoor-outdoor)
         self.processed_data['Temp_Diff'] = self.processed_data['Temperature_Setpoint'] - self.processed_data['Temperature']
         
         # Weather encoded
@@ -135,19 +131,15 @@ class HEMSDataProcessor:
         return train_loader, test_loader, X_train.shape[1]
     
     def prepare_rl_data(self):
-        # prepare for rl env
         return self.train_data, self.test_data
     
     def encode_spikes(self, data, threshold=0.5, n_steps=100):
         """Encode continuous values to spike trains using rate coding"""
-        # Normalize -> [0, 1]
-        normalized_data = (data - data.min()) / (data.max() - data.min())
+        normalized_data = (data - data.min()) / (data.max() - data.min())  # [0, 1]
         
-        # Create spike trains
         spike_trains = torch.zeros(n_steps, len(data))
         
         for t in range(n_steps):
-            # Generate spikes with probability proportional to input value
             spike_trains[t] = torch.bernoulli(normalized_data)
         
         return spike_trains
@@ -167,15 +159,12 @@ class HEMSDataProcessor:
     
     def analyze_data_patterns(self):
         """Analyze patterns in the data"""
-        # Time-based patterns
         hourly_consumption = self.processed_data.groupby('Hour')['Total_Consumption'].mean()
         hourly_pv = self.processed_data.groupby('Hour')['PV_Generation'].mean()
         hourly_price = self.processed_data.groupby('Hour')['Energy_Price'].mean()
         
-        # Temperature vs. HVAC correlation
         temp_hvac_corr = self.processed_data[['Temperature', 'HVAC']].corr().iloc[0, 1]
         
-        # Battery usage patterns
         battery_usage = self.processed_data.groupby('Hour')[['Battery_Charge', 'Battery_Discharge']].mean()
         
         results = {
