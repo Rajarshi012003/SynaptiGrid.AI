@@ -1,7 +1,5 @@
 """
 Reinforcement Learning Agent for HEMS
-
-This module implements the reinforcement learning agent using TD3 for the HEMS solution.
 """
 
 import os
@@ -27,10 +25,8 @@ class CustomFeatureExtractor(BaseFeaturesExtractor):
     def __init__(self, observation_space, features_dim=128):
         super().__init__(observation_space, features_dim)
         
-        # Input dimension
         n_input = int(np.prod(observation_space.shape))
         
-        #  feature extraction 
         self.feature_net = nn.Sequential(
             nn.Linear(n_input, 128),
             nn.ReLU(),
@@ -94,7 +90,6 @@ class EpisodeLogCallback(BaseCallback):
         self.eval_freq = eval_freq
         self.best_reward = -float('inf')
         
-        # Metrics for tracking
         self.episode_rewards = []
         self.episode_costs = []
         self.episode_comfort = []
@@ -112,7 +107,6 @@ class EpisodeLogCallback(BaseCallback):
         self.episode_count += 1
         
         if self.episode_count % self.eval_freq == 0:  # Evaluate every eval_freq episodes
-            # Run evaluation episode
             obs, _ = self.eval_env.reset()
             done = False
             episode_reward = 0
@@ -121,25 +115,20 @@ class EpisodeLogCallback(BaseCallback):
                 obs, reward, done, _, info = self.eval_env.step(action)
                 episode_reward += reward
             
-            # Get episode summary
             summary, df = self.eval_env.get_episode_summary()
             
-            # Extract the reward components from the last step
             reward_components = self.eval_env.history[-1]['reward_components']
             
-            # Store metrics
             self.episode_rewards.append(episode_reward)
             self.episode_costs.append(summary['total_energy_cost'])
             self.episode_comfort.append(summary['average_comfort'])
             self.episode_emissions.append(summary['total_carbon_emissions'])
             self.episode_peaks.append(summary['peak_demand'])
             
-            # Battery usage metrics
             battery_discharge_total = df['batt_discharge'].sum()
             battery_charge_total = df['batt_charge'].sum()
             self.episode_battery_usage.append(battery_discharge_total + battery_charge_total)
             
-            # Log to CSV
             log_df = pd.DataFrame({
                 'episode': [self.episode_count],
                 'reward': [episode_reward],
@@ -161,64 +150,54 @@ class EpisodeLogCallback(BaseCallback):
             else:
                 log_df.to_csv(log_path, mode='w', header=True, index=False)
             
-            # Save the best model
             if episode_reward > self.best_reward:
                 self.best_reward = episode_reward
                 self.model.save(os.path.join(self.log_dir, "td3_hems_best"))
                 if self.verbose > 0:
                     print(f"New best model saved with reward: {episode_reward:.2f}")
             
-            # Plot progress every 50 episodes
             if self.episode_count % 50 == 0:
                 self._plot_training_progress()
                 
-                # Also save the model
                 self.model.save(os.path.join(self.log_dir, f"td3_hems_{self.episode_count}"))
     
     def _plot_training_progress(self):
         """Plot training progress"""
-        # Create directory for figures
         figures_dir = os.path.join(self.log_dir, 'figures')
         os.makedirs(figures_dir, exist_ok=True)
         
         fig, axs = plt.subplots(3, 2, figsize=(15, 12))
         
-        # Plot rewards
         axs[0, 0].plot(self.episode_rewards)
         axs[0, 0].set_title('Episode Rewards')
         axs[0, 0].set_xlabel('Evaluation Episode')
         axs[0, 0].set_ylabel('Average Reward')
         axs[0, 0].grid(True)
         
-        # Plot energy costs
         axs[0, 1].plot(self.episode_costs)
         axs[0, 1].set_title('Energy Costs')
         axs[0, 1].set_xlabel('Evaluation Episode')
         axs[0, 1].set_ylabel('Total Cost')
         axs[0, 1].grid(True)
         
-        # Plot comfort
         axs[1, 0].plot(self.episode_comfort)
         axs[1, 0].set_title('Comfort')
         axs[1, 0].set_xlabel('Evaluation Episode')
         axs[1, 0].set_ylabel('Average Comfort')
         axs[1, 0].grid(True)
         
-        # Plot emissions
         axs[1, 1].plot(self.episode_emissions)
         axs[1, 1].set_title('Carbon Emissions')
         axs[1, 1].set_xlabel('Evaluation Episode')
         axs[1, 1].set_ylabel('Total Emissions')
         axs[1, 1].grid(True)
         
-        # Plot peak demand
         axs[2, 0].plot(self.episode_peaks)
         axs[2, 0].set_title('Peak Demand')
         axs[2, 0].set_xlabel('Evaluation Episode')
         axs[2, 0].set_ylabel('Peak Demand (kW)')
         axs[2, 0].grid(True)
         
-        # Plot battery usage
         axs[2, 1].plot(self.episode_battery_usage)
         axs[2, 1].set_title('Battery Usage')
         axs[2, 1].set_xlabel('Evaluation Episode')
@@ -234,14 +213,11 @@ def train_rl_agent(train_env, eval_env, total_timesteps=200000, log_dir='./logs/
                 learning_rate=1e-4, buffer_size=100000, learning_starts=5000, batch_size=512, 
                 train_freq=1, gradient_steps=1):
     """Train a TD3 agent for HEMS control"""
-    # Set random seeds
     np.random.seed(seed)
     torch.manual_seed(seed)
     
-    # Make sure train_env is monitored
     train_env = Monitor(train_env)
     
-    # Create custom policy kwargs
     policy_kwargs = {
         "net_arch": {
             "pi": [256, 256],  # Actor network
@@ -257,11 +233,10 @@ def train_rl_agent(train_env, eval_env, total_timesteps=200000, log_dir='./logs/
     # Use Ornstein-Uhlenbeck noise with reduced parameters for more stable exploration
     action_noise = OrnsteinUhlenbeckActionNoise(
         mean=np.zeros(n_actions),
-        sigma=0.2 * np.ones(n_actions),  # Reduced from 0.3
-        theta=0.1  # Reduced from 0.15 for smoother exploration
+        sigma=0.2 * np.ones(n_actions),  
+        theta=0.1  
     )
     
-    # Create agent with improved hyperparameters for better convergence
     model = TD3(
         "MlpPolicy",
         train_env,
@@ -270,11 +245,11 @@ def train_rl_agent(train_env, eval_env, total_timesteps=200000, log_dir='./logs/
         buffer_size=buffer_size,
         learning_starts=learning_starts,
         batch_size=batch_size,
-        tau=0.002,  # Reduced from 0.005 for more stable target updates
+        tau=0.002,  
         gamma=0.99,
         policy_delay=2,
-        target_policy_noise=0.1,  # Reduced from 0.2
-        target_noise_clip=0.2,  # Reduced from 0.5
+        target_policy_noise=0.1,  
+        target_noise_clip=0.2, 
         verbose=1,
         seed=seed,
         device='auto',
@@ -284,16 +259,13 @@ def train_rl_agent(train_env, eval_env, total_timesteps=200000, log_dir='./logs/
         tensorboard_log=os.path.join(log_dir, "tb_logs")
     )
     
-    # Create default callbacks if none provided
     if callbacks is None:
         eval_callback = EpisodeLogCallback(eval_env, log_dir=log_dir, verbose=1, eval_freq=10)
         curricular_callback = CurricularTrainingCallback(train_env, verbose=1)
         callbacks = CallbackList([eval_callback, curricular_callback])
     
-    # Train the agent
     model.learn(total_timesteps=total_timesteps, callback=callbacks)
     
-    # Save the final model
     model.save(os.path.join(log_dir, "td3_hems_final"))
     
     print(f"Training completed. Model saved to {log_dir}/td3_hems_final")
@@ -318,7 +290,7 @@ def evaluate_rl_agent(agent, env, n_episodes=5, deterministic=True):
         episode_reward = 0
         
         while not done:
-            # Get action from RL model
+            #  action from model
             action_rl, _ = agent.predict(obs, deterministic=deterministic)
             
             # Apply safety layer to enforce constraints
@@ -328,16 +300,13 @@ def evaluate_rl_agent(agent, env, n_episodes=5, deterministic=True):
             obs, reward, done, _, info = env.step(action)
             episode_reward += reward
         
-        # Get episode summary
         summary, df = env.get_episode_summary()
         
-        # Visualize episode
         try:
             visualize_episode(env, df)
         except:
             print("Warning: Could not visualize episode")
         
-        # Store results
         all_rewards.append(episode_reward)
         all_summaries.append(summary)
         all_dfs.append(df)
@@ -350,7 +319,6 @@ def evaluate_rl_agent(agent, env, n_episodes=5, deterministic=True):
         print(f"Battery cycles: {(df['batt_charge'].sum() + df['batt_discharge'].sum()) / (2 * BATTERY_CAPACITY):.2f}")
         print("-" * 50)
     
-    # Calculate average metrics across episodes
     avg_reward = np.mean(all_rewards)
     avg_cost = np.mean([s['total_energy_cost'] for s in all_summaries])
     avg_comfort = np.mean([s['average_comfort'] for s in all_summaries])
@@ -364,7 +332,6 @@ def evaluate_rl_agent(agent, env, n_episodes=5, deterministic=True):
     print(f"Average carbon emissions: {avg_emissions:.2f}")
     print(f"Average peak demand: {avg_peak:.2f}")
     
-    # Return all results
     results = {
         'rewards': all_rewards,
         'summaries': all_summaries,
@@ -384,42 +351,34 @@ def compare_with_baseline(rl_results, test_data, log_dir='./logs/'):
     
     def rule_based_policy(obs):
         """Simple rule-based policy for comparison"""
-        # Unpack observation
         temp_in, battery_soc, pv_gen, price, hour, carbon = obs
         
-        # Initialize actions
         hvac_power = 0.0
         batt_charge = 0.0
         batt_discharge = 0.0
         
-        # HVAC control rules
         if temp_in < 18.0:
-            # If too cold, turn on heating
             hvac_power = 2.0
         elif temp_in > 25.0:
-            # If too hot, turn on cooling
             hvac_power = 1.5
         
-        # Battery control rules based on time and price
-        if price < 0.1:  # Low price period
-            # Charge battery during low price if not full
+        if price < 0.1:  
+           
             if battery_soc < 0.9:
-                batt_charge = min(5.0, pv_gen + 1.0)  # Use PV + some grid
+                batt_charge = min(5.0, pv_gen + 1.0)  
                 batt_discharge = 0.0
-        elif price > 0.2:  # High price period
-            # Discharge battery during high price if available
+        elif price > 0.2:  
+            
             if battery_soc > 0.2:
-                batt_discharge = min(5.0, hvac_power + 1.0)  # Cover HVAC + some extra
+                batt_discharge = min(5.0, hvac_power + 1.0)  
                 batt_charge = 0.0
-        else:  # Medium price
-            # Use PV for charging if available and battery not full
+        else:  
             if pv_gen > 1.0 and battery_soc < 0.8:
-                batt_charge = min(pv_gen - 1.0, 5.0)  # Use excess PV
+                batt_charge = min(pv_gen - 1.0, 5.0)  
                 batt_discharge = 0.0
         
         return np.array([hvac_power, batt_charge, batt_discharge])
     
-    # Run baseline policy
     env = HEMSEnvironment(test_data)
     opt_layer = OptimizationLayer()
     
@@ -427,44 +386,35 @@ def compare_with_baseline(rl_results, test_data, log_dir='./logs/'):
     baseline_summaries = []
     baseline_dfs = []
     
-    # Run multiple episodes with the baseline policy
     for episode in range(len(rl_results['rewards'])):
         obs, _ = env.reset()
         done = False
         episode_reward = 0
         
         while not done:
-            # Get action from rule-based policy
             action_baseline = rule_based_policy(obs)
             
-            # Apply safety layer
             action = opt_layer.enforce_constraints(obs, action_baseline)
             
-            # Take step in environment
             obs, reward, done, _, info = env.step(action)
             episode_reward += reward
         
-        # Get episode summary
         summary, df = env.get_episode_summary()
         
-        # Store results
         baseline_rewards.append(episode_reward)
         baseline_summaries.append(summary)
         baseline_dfs.append(df)
     
-    # Calculate average metrics for baseline
     baseline_avg_reward = np.mean(baseline_rewards)
     baseline_avg_cost = np.mean([s['total_energy_cost'] for s in baseline_summaries])
     baseline_avg_comfort = np.mean([s['average_comfort'] for s in baseline_summaries])
     baseline_avg_emissions = np.mean([s['total_carbon_emissions'] for s in baseline_summaries])
     baseline_avg_peak = np.mean([s['peak_demand'] for s in baseline_summaries])
     
-    # Print comparison
     print("\nComparison with Baseline:")
     print(f"{'Metric':<20} {'RL Agent':<12} {'Baseline':<12} {'Improvement (%)':<15}")
     print("-" * 60)
     
-    # Calculate and print improvements
     cost_improvement = (baseline_avg_cost - rl_results['avg_cost']) / baseline_avg_cost * 100
     comfort_improvement = (rl_results['avg_comfort'] - baseline_avg_comfort) / baseline_avg_comfort * 100
     emissions_improvement = (baseline_avg_emissions - rl_results['avg_emissions']) / baseline_avg_emissions * 100
@@ -475,7 +425,6 @@ def compare_with_baseline(rl_results, test_data, log_dir='./logs/'):
     print(f"{'Carbon Emissions':<20} {rl_results['avg_emissions']:<12.2f} {baseline_avg_emissions:<12.2f} {emissions_improvement:<15.2f}")
     print(f"{'Peak Demand':<20} {rl_results['avg_peak']:<12.2f} {baseline_avg_peak:<12.2f} {peak_improvement:<15.2f}")
     
-    # Save comparison results to CSV
     comparison_df = pd.DataFrame({
         'Metric': ['Energy Cost', 'Comfort', 'Carbon Emissions', 'Peak Demand'],
         'RL Agent': [rl_results['avg_cost'], rl_results['avg_comfort'], rl_results['avg_emissions'], rl_results['avg_peak']],
@@ -485,7 +434,6 @@ def compare_with_baseline(rl_results, test_data, log_dir='./logs/'):
     
     comparison_df.to_csv(os.path.join(log_dir, 'comparison_results.csv'), index=False)
     
-    # Return comparison results
     return {
         'rl': rl_results,
         'baseline': {
@@ -514,13 +462,10 @@ def create_real_time_controller(agent, opt_layer=None):
     
     def controller(obs):
         """Real-time controller function"""
-        # Get action from agent
         action_rl, _ = agent.predict(obs, deterministic=True)
         
-        # Apply safety layer
         action = opt_layer.enforce_constraints(obs, action_rl)
         
-        # Create detailed response
         hvac_power, batt_charge, batt_discharge = action
         
         response = {
@@ -546,7 +491,6 @@ def create_real_time_controller(agent, opt_layer=None):
         
         reasons = []
         
-        # Temperature reasoning
         if hvac_power > 2.0:
             reasons.append("High HVAC usage due to significant temperature deviation")
         elif hvac_power > 0.5:
@@ -554,7 +498,6 @@ def create_real_time_controller(agent, opt_layer=None):
         else:
             reasons.append("Minimal HVAC usage as temperature is within comfort zone")
         
-        # Battery reasoning
         if batt_charge > 0:
             if price < 0.15:
                 reasons.append("Charging battery during low-price period")
