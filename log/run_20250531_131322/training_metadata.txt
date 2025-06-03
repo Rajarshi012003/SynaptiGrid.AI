@@ -1,1 +1,14 @@
+Training started: 2025-05-31 13:13:22.273442
+Training completed: 2025-05-31 13:20:30.756624
+Duration: 0:07:08.483182
+Total timesteps: 100000
+Environment parameters:
+  - Episode length: 48
+  - Random weather: True
+  - Observation normalization: True
+Learning parameters:
+  - Learning rate: 5e-4
+  - Buffer size: 100000
+  - Batch size: 256
+  - Gradient steps: 1000
 
