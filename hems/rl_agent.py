@@ -30,11 +30,11 @@ class CustomFeatureExtractor(BaseFeaturesExtractor):
         # Input dimension
         n_input = int(np.prod(observation_space.shape))
         
-        # Define the feature extraction layers
+        #  feature extraction 
         self.feature_net = nn.Sequential(
             nn.Linear(n_input, 128),
             nn.ReLU(),
-            nn.LayerNorm(128),  # Add layer normalization for better stability
+            nn.LayerNorm(128),  # stability
             nn.Linear(128, 128),
             nn.ReLU(),
             nn.LayerNorm(128),
@@ -73,12 +73,10 @@ class CurricularTrainingCallback(BaseCallback):
                 # Level 1: Add mild randomization
                 self.env.random_weather = True
             elif self.current_difficulty == 2:
-                # Level 2: Increase challenge with more price variations
-                # (would be implemented in the environment)
+                # Level 2: Increase challenge with more price variations(in env)
                 pass
             elif self.current_difficulty == 3:
-                # Level 3: Full challenge with all variations
-                # (would be implemented in the environment)
+                # Level 3: Full challenge with all variations(in env)
                 pass
             
             if self.verbose > 0:
@@ -104,7 +102,6 @@ class EpisodeLogCallback(BaseCallback):
         self.episode_peaks = []
         self.episode_battery_usage = []
         
-        # Create log directory if it doesn't exist
         os.makedirs(log_dir, exist_ok=True)
     
     def _on_step(self):
