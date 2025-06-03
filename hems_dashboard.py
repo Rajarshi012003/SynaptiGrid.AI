@@ -9,37 +9,34 @@ import os
 import glob
 from datetime import datetime, timedelta
 
-# Import HEMS modules
 from data_processor import HEMSDataProcessor
 from rl_environment import HEMSEnvironment
 from rl_agent import create_real_time_controller
 from snn_model import SNN_Model
 
-# Set environment variable to avoid Qt errors
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
-# Function to find the most recent model
+
 def find_latest_model():
     """Find the most recent trained model"""
     model_files = glob.glob("logs/run_*/td3_hems_best.zip")
     if not model_files:
         return None
     
-    # Sort by modification time (newest first)
+    
     model_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
     return model_files[0]
 
-# Function to find SNN models
+#find SNN models
 def find_snn_models():
     """Find available SNN models"""
     snn_files = glob.glob("logs/run_*/snn_model.pth")
     if not snn_files:
         return {}
     
-    # Sort by modification time (newest first)
+    
     snn_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
     
-    # Create a dictionary with model names
     snn_models = {}
     for i, model in enumerate(snn_files):
         run_dir = os.path.dirname(model)
@@ -51,7 +48,6 @@ def find_snn_models():
     
     return snn_models
 
-# Page configuration
 st.set_page_config(
     page_title="HEMS Dashboard",
     page_icon="🏠",
@@ -59,7 +55,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom styling
 st.markdown("""
 <style>
     .main .block-container {padding-top: 2rem;}
@@ -79,7 +74,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Helper functions
+# Helpers
 def load_model(model_path):
     """Load a pre-trained RL model"""
     try:
@@ -104,27 +99,22 @@ def get_weather_icon(weather):
 
 def run_simulation(env, controller, start_time, initial_temp, initial_battery, duration=24):
     """Run a simulation for the specified duration"""
-    # Reset environment with custom initial conditions
+    # Reset env with custom init. config
     obs, _ = env.reset()
     
-    # Override initial conditions
     env.temp_in = initial_temp
     env.battery_soc = initial_battery
     
-    # Run simulation
+    # Simul....
     results = []
     for i in range(duration):
-        # Get current observation
         obs = env._get_observation()
         
-        # Get controller action
         response = controller(obs)
         action = [response['hvac_power'], response['battery_charge'], response['battery_discharge']]
         
-        # Step environment
         next_obs, reward, done, _, info = env.step(action)
         
-        # Get current state
         current_time = start_time + timedelta(hours=i)
         current_state = {
             'timestamp': current_time,
@@ -149,7 +139,6 @@ def run_simulation(env, controller, start_time, initial_temp, initial_battery, d
         
         results.append(current_state)
         
-        # Update observation
         obs = next_obs
         
         if done:
@@ -157,21 +146,18 @@ def run_simulation(env, controller, start_time, initial_temp, initial_battery, d
     
     return pd.DataFrame(results)
 
-# Main app layout
+# App layout
 st.title("🏠 Home Energy Management System Dashboard")
 st.markdown("---")
 
-# Sidebar for inputs
 st.sidebar.header("Simulation Settings")
 
-# Load data
 data_path = st.sidebar.text_input("Data Path", value="hems_data_final.csv")
 try:
     data_processor = HEMSDataProcessor(data_path)
     data = data_processor.load_data()
     data = data_processor.preprocess_data()
     
-    # Split data
     train_data, test_data = data_processor.split_data(test_size=0.2)
     
     st.sidebar.success(f"Data loaded successfully: {len(data)} records")
@@ -179,14 +165,11 @@ except Exception as e:
     st.sidebar.error(f"Error loading data: {e}")
     st.stop()
 
-# Find latest model
 latest_model = find_latest_model()
 latest_model_name = "Latest Model (Auto-detected)" if latest_model else "No model auto-detected"
 
-# Find SNN models
 snn_models = find_snn_models()
 
-# Available models
 available_models = {
     latest_model_name: latest_model,
     "Combined RL+SNN Model": "logs/run_20250531_135517/td3_hems_best.zip",
@@ -196,10 +179,8 @@ available_models = {
     "Quick-Trained Model": "logs/run_20250531_125610/td3_hems_best.zip"
 }
 
-# Filter out None values
 available_models = {k: v for k, v in available_models.items() if v is not None}
 
-# Model selection
 st.sidebar.subheader("RL Model Selection")
 selected_model = st.sidebar.selectbox(
     "Select RL Model", 
@@ -208,7 +189,6 @@ selected_model = st.sidebar.selectbox(
 )
 model_path = available_models[selected_model]
 
-# SNN Model selection if available
 if snn_models:
     st.sidebar.subheader("SNN Model Selection")
     selected_snn_model = st.sidebar.selectbox(
@@ -233,7 +213,6 @@ else:
     use_model = False
     st.warning(f"Model not found at {model_path}. Using rule-based controller instead.")
 
-# Choose controller type
 controller_type = st.sidebar.radio(
     "Controller Type",
     ["AI Model (if available)", "Rule-based Controller"],
@@ -241,31 +220,25 @@ controller_type = st.sidebar.radio(
 )
 use_model = use_model and controller_type == "AI Model (if available)"
 
-# Initial conditions
 st.sidebar.subheader("Initial Conditions")
 start_date = st.sidebar.date_input("Start Date", value=pd.to_datetime(data['Timestamp'].min()).date())
 start_hour = st.sidebar.slider("Start Hour", 0, 23, 8)
 initial_temp = st.sidebar.slider("Initial Indoor Temperature (°C)", 15.0, 28.0, 21.0, 0.5)
 initial_battery = st.sidebar.slider("Initial Battery SOC (%)", 0, 100, 50) / 100.0
 
-# Simulation length
 simulation_hours = st.sidebar.slider("Simulation Duration (hours)", 1, 48, 24)
 
-# Weather condition override
 weather_options = ["Clear", "Cloudy", "Rainy", "Windy"]
 weather_override = st.sidebar.selectbox("Weather Condition", options=["Use data values"] + weather_options)
 
-# Energy price override
 price_override = st.sidebar.slider("Energy Price Override ($/kWh)", 0.05, 0.50, 0.15, 0.01)
 use_price_override = st.sidebar.checkbox("Use Price Override", value=False)
 
-# PV generation factor
 pv_factor = st.sidebar.slider("PV Generation Factor", 0.0, 2.0, 1.0, 0.1)
 
-# Run simulation button
 if st.sidebar.button("Run Simulation", type="primary"):
     with st.spinner("Running simulation..."):
-        # Create environment
+        # ENV CREATION
         env = HEMSEnvironment(
             data=test_data,
             episode_length=simulation_hours,
@@ -273,20 +246,16 @@ if st.sidebar.button("Run Simulation", type="primary"):
             normalize_obs=True
         )
         
-        # Create controller
         if use_model:
             controller = create_real_time_controller(model)
         else:
-            # Create a simple rule-based controller as fallback
+            # Plan B!
             def simple_controller(obs):
-                # Unnormalize obs if needed
                 if env.normalize_obs:
                     obs = obs * env.obs_stds + env.obs_means
                 
-                # Unpack observation
                 temp, batt_soc, pv_gen, price, hour, carbon = obs
                 
-                # Simple rule-based logic
                 if temp < 19:
                     hvac = 2.0  # Heat if too cold
                 elif temp > 23:
@@ -294,7 +263,7 @@ if st.sidebar.button("Run Simulation", type="primary"):
                 else:
                     hvac = 0.5  # Maintain if comfortable
                 
-                # Battery logic
+                # Battery
                 if price < 0.15 and batt_soc < 0.8:
                     batt_charge = 3.0
                     batt_discharge = 0.0
@@ -316,10 +285,8 @@ if st.sidebar.button("Run Simulation", type="primary"):
             
             controller = simple_controller
         
-        # Set start time
         start_time = datetime.combine(start_date, datetime.min.time()) + timedelta(hours=start_hour)
         
-        # Run simulation
         results_df = run_simulation(
             env, 
             controller, 
@@ -329,7 +296,6 @@ if st.sidebar.button("Run Simulation", type="primary"):
             duration=simulation_hours
         )
         
-        # Store results in session state
         st.session_state.results = results_df
         st.session_state.total_energy_cost = results_df['energy_cost'].sum()
         st.session_state.avg_comfort_violation = results_df['comfort_violation'].mean()
@@ -340,17 +306,14 @@ if st.sidebar.button("Run Simulation", type="primary"):
         st.session_state.controller_type = "AI Model" if use_model else "Rule-based Controller"
         st.session_state.model_info = selected_model if use_model else "N/A"
 
-# Main content tabs
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Dashboard", "🔌 Energy Flow", "📈 Controller Analysis", "🧠 Neural Models", "📋 Raw Data", "🔄 Model Training"])
 
 with tab1:
     if 'simulation_ran' in st.session_state and st.session_state.simulation_ran:
         results_df = st.session_state.results
         
-        # Controller type indicator
         st.info(f"Controller: {st.session_state.controller_type} - {st.session_state.model_info}")
         
-        # Key metrics in a row
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -373,7 +336,6 @@ with tab1:
             st.metric("Battery Cycles Used", f"{st.session_state.battery_cycles:.2f}")
             st.markdown("</div>", unsafe_allow_html=True)
         
-        # Temperature chart
         st.subheader("Temperature Management")
         fig1, ax1 = plt.subplots(figsize=(10, 6))
         ax1.plot(results_df['timestamp'], results_df['temperature_indoor'], 'b-', label='Indoor Temp')
@@ -385,7 +347,6 @@ with tab1:
         ax1.grid(True, alpha=0.3)
         st.pyplot(fig1)
         
-        # Energy management chart
         st.subheader("Energy Management")
         fig2, ax2 = plt.subplots(figsize=(10, 6))
         ax2.bar(results_df['timestamp'], results_df['pv_generation'], color='yellow', alpha=0.7, label='PV Generation')
@@ -398,7 +359,6 @@ with tab1:
         ax2.grid(True, alpha=0.3)
         st.pyplot(fig2)
         
-        # Battery state chart
         st.subheader("Battery Management")
         fig3, ax3 = plt.subplots(figsize=(10, 6))
         ax3.plot(results_df['timestamp'], results_df['battery_soc'] * 100, 'b-', label='Battery SOC (%)')
@@ -409,14 +369,12 @@ with tab1:
         ax31.bar(results_df['timestamp'], -results_df['battery_discharge'], color='red', alpha=0.5, label='Discharge Rate')
         ax31.set_ylabel('Power (kW)')
         
-        # Combine legends
         lines1, labels1 = ax3.get_legend_handles_labels()
         lines2, labels2 = ax31.get_legend_handles_labels()
         ax3.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
         ax3.grid(True, alpha=0.3)
         st.pyplot(fig3)
         
-        # Price and carbon chart
         st.subheader("Energy Price & Carbon Intensity")
         fig4, ax4 = plt.subplots(figsize=(10, 6))
         ax4.plot(results_df['timestamp'], results_df['energy_price'], 'r-', label='Energy Price ($/kWh)')
@@ -427,7 +385,6 @@ with tab1:
         ax41.plot(results_df['timestamp'], results_df['grid_carbon'], 'g-', label='Carbon Intensity (g/kWh)')
         ax41.set_ylabel('Carbon Intensity (g/kWh)')
         
-        # Combine legends
         lines1, labels1 = ax4.get_legend_handles_labels()
         lines2, labels2 = ax41.get_legend_handles_labels()
         ax4.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
@@ -443,14 +400,11 @@ with tab2:
         
         st.subheader("Energy Flow Analysis")
         
-        # Select a specific time
         selected_hour = st.slider("Select Hour", 0, len(results_df)-1, len(results_df)//2)
         selected_data = results_df.iloc[selected_hour]
         
-        # Display current time and weather
         st.markdown(f"### Time: {selected_data['timestamp']} | Weather: {get_weather_icon(selected_data['weather'])} {selected_data['weather']}")
         
-        # Create 3 columns for energy flow visualization
         col1, col2, col3 = st.columns([1, 2, 1])
         
         with col1:
@@ -467,10 +421,8 @@ with tab2:
             st.markdown(f"**Carbon Intensity:** {selected_data['grid_carbon']:.1f} g/kWh")
         
         with col2:
-            # Create sankey diagram or energy flow visualization
             st.image("hems_energy_flow.png", caption="Energy Flow Diagram")
             
-            # Display controller reasoning
             st.markdown("### Controller Decision Reasoning")
             st.info(selected_data['reasoning'])
         
@@ -494,7 +446,6 @@ with tab3:
         
         st.subheader("Controller Analysis")
         
-        # HVAC control strategy
         st.markdown("### HVAC Control Strategy")
         fig5, ax5 = plt.subplots(figsize=(10, 6))
         scatter = ax5.scatter(
@@ -511,11 +462,9 @@ with tab3:
         cbar.set_label('Energy Price ($/kWh)')
         st.pyplot(fig5)
         
-        # Battery control strategy
         st.markdown("### Battery Control Strategy")
         fig6, ax6 = plt.subplots(figsize=(10, 6))
         
-        # Net battery power (positive for charging, negative for discharging)
         net_battery = results_df['battery_charge'] - results_df['battery_discharge']
         
         scatter = ax6.scatter(
@@ -534,13 +483,10 @@ with tab3:
         cbar.set_label('Battery SOC')
         st.pyplot(fig6)
         
-        # Time-of-day control strategy
         st.markdown("### Time-of-Day Control Strategy")
         
-        # Extract hour from timestamp
         results_df['hour'] = results_df['timestamp'].dt.hour
         
-        # Pivot table for heatmap
         pivot_data = results_df.pivot_table(
             index='hour',
             values=['hvac_power', 'battery_charge', 'battery_discharge', 'grid_import', 'energy_price', 'pv_generation'],
@@ -559,35 +505,29 @@ with tab3:
 with tab4:
     st.subheader("Neural Network Models")
     
-    # RL Model section
     st.markdown("### Reinforcement Learning Model")
     st.write(f"Selected model: **{selected_model}**")
     st.write(f"Path: `{model_path}`")
     
     if use_model:
-        # Show model architecture summary
         st.write("Model architecture: TD3 (Twin Delayed DDPG)")
         st.write("- Actor network: 2 hidden layers with 256 neurons each")
         st.write("- Critic networks: 2 hidden layers with 256 neurons each")
     
-    # SNN Model section
     st.markdown("### Spiking Neural Network Model")
     
     if snn_model_path and os.path.exists(snn_model_path):
         st.write(f"Selected SNN model: **{selected_snn_model}**")
         st.write(f"Path: `{snn_model_path}`")
         
-        # Try to load and display SNN model info
         try:
             run_dir = os.path.dirname(snn_model_path)
             
-            # Show SNN activity if available
             snn_activity_path = os.path.join(run_dir.replace("logs", "results"), "snn_activity.png")
             if os.path.exists(snn_activity_path):
                 st.write("#### SNN Activity Visualization")
                 st.image(snn_activity_path, caption="SNN Activity Pattern")
             
-            # Show SNN training loss if available
             snn_loss_path = os.path.join(run_dir.replace("logs", "results"), "snn_training_loss.png")
             if os.path.exists(snn_loss_path):
                 st.write("#### SNN Training Loss")
@@ -604,7 +544,6 @@ with tab5:
         st.subheader("Raw Simulation Data")
         st.dataframe(results_df)
         
-        # Download button
         csv = results_df.to_csv(index=False)
         st.download_button(
             label="Download Data as CSV",
@@ -618,19 +557,16 @@ with tab5:
 with tab6:
     st.subheader("Train New Model")
     
-    # Only show training interface if a simulation hasn't been run yet
     if 'simulation_ran' not in st.session_state:
         col1, col2 = st.columns([1, 1])
         
         with col1:
             st.markdown("### Training Parameters")
             
-            # Basic parameters
             training_timesteps = st.number_input("Training Timesteps", min_value=10000, max_value=500000, value=25000, step=5000)
             episode_length = st.number_input("Episode Length (hours)", min_value=12, max_value=72, value=48, step=12)
             random_weather = st.checkbox("Random Weather", value=True)
             
-            # Advanced parameters (in an expander)
             with st.expander("Advanced Parameters"):
                 learning_rate = st.select_slider("Learning Rate", options=[0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005], value=0.0005)
                 batch_size = st.select_slider("Batch Size", options=[64, 128, 256, 512], value=256)
@@ -653,21 +589,16 @@ with tab6:
             - **Gradient Steps**: Number of optimization steps per update
             """)
             
-            # Training button
             if st.button("Start Training", type="primary"):
-                # Create a unique identifier for this run
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 run_dir = f"logs/run_{timestamp}"
                 
-                # Display progress
                 progress_placeholder = st.empty()
                 progress_bar = st.progress(0)
                 log_placeholder = st.empty()
                 
-                # Create directories
                 os.makedirs(run_dir, exist_ok=True)
                 
-                # Create a log file
                 log_file = os.path.join(run_dir, "training_log.txt")
                 with open(log_file, "w") as f:
                     f.write(f"Training started at {datetime.now()}\n")
@@ -681,10 +612,8 @@ with tab6:
                     f.write(f"  - Learning starts: {learning_starts}\n")
                     f.write(f"  - Gradient steps: {gradient_steps}\n")
                 
-                # Launch training in a separate process (simulated here)
                 progress_placeholder.info("Preparing training environment...")
                 
-                # Update the command to include our parameters
                 command = f"""python train_optimized.py \
                 --timesteps {training_timesteps} \
                 --episode_length {episode_length} \
@@ -698,25 +627,18 @@ with tab6:
                 
                 st.code(command, language="bash")
                 
-                # Simulated training progress
                 log_placeholder.text_area("Training Log", "Starting training...\n", height=200)
                 
-                # In a real implementation, you would run the command here
-                # and stream output to the log_placeholder
                 
                 st.session_state.training_started = True
                 st.session_state.training_run_dir = run_dir
                 st.session_state.training_progress = 0
                 
-                # Refresh page to show training progress
                 st.experimental_rerun()
     
     elif 'training_started' in st.session_state:
-        # Show training progress
         st.info(f"Training in progress. Run directory: {st.session_state.training_run_dir}")
         
-        # In a real implementation, you would check the actual progress
-        # For now, we'll just increment a counter
         if 'training_progress' not in st.session_state:
             st.session_state.training_progress = 0
         
@@ -725,21 +647,15 @@ with tab6:
         
         progress_bar = st.progress(st.session_state.training_progress / 100)
         
-        # Show logs if available
         log_file = os.path.join(st.session_state.training_run_dir, "training_log.txt")
         if os.path.exists(log_file):
             with open(log_file, "r") as f:
                 log_content = f.read()
             st.text_area("Training Log", log_content, height=300)
         
-        # If training complete, show results
         if st.session_state.training_progress >= 100:
             st.success("Training complete! The new model is now available in the model selection dropdown.")
             
-            # Add the new model to the available models
-            # In a real implementation, you would update the model list
-            
-            # Button to clear training state and run simulation
             if st.button("Run Simulation with New Model", type="primary"):
                 del st.session_state.training_started
                 del st.session_state.training_progress
@@ -749,6 +665,5 @@ with tab6:
     else:
         st.info("Run a simulation first before training a new model, or refresh the page.")
 
-# Footer
 st.markdown("---")
 st.markdown("Home Energy Management System (HEMS) using Spiking Neural Networks and Reinforcement Learning") 
