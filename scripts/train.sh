@@ -1,22 +1,17 @@
 #!/bin/bash
 
-# Script to train an optimized HEMS model with SNN integration
-
-# Create timestamp for this run
+#  timestamp 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RUN_DIR="logs/run_${TIMESTAMP}"
 
-# Make sure directories exist
 mkdir -p logs models results
 
-# Print header
 echo "================================================"
 echo "Starting HEMS Optimized Training with SNN"
 echo "Run directory: $RUN_DIR"
 echo "Timestamp: $TIMESTAMP"
 echo "================================================"
 
-# Run the training script with optimized hyperparameters
 python train_optimized.py \
   --timesteps 50000 \
   --episode_length 48 \
@@ -31,7 +26,7 @@ python train_optimized.py \
   --train_freq 1000 \
   --run_dir "$RUN_DIR"
 
-# Print completion message
+
 echo "================================================"
 echo "Training complete!"
 echo "Model saved to: $RUN_DIR/td3_hems_best.zip"
