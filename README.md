@@ -73,8 +73,8 @@ This intelligent HEMS system:
 
 | 🧪 Model Type      | 📂 Path                                      | 🎯 Reward | 📝 Description            |
 | ------------------ | -------------------------------------------- | --------- | ------------------------- |
-| 🔁 RL + SNN Hybrid | `logs/run_20250531_135517/td3_hems_best.zip` | TBD       | Latest hybrid integration |
-| 🏆 Best RL Model   | `logs/run_20250531_131322/td3_hems_best.zip` | 12.80     | Best overall performer    |
+| 🔁 RL + SNN Hybrid | `logs/run_20250531_135517/td3_hems_best.zip` | 10.7       | Latest hybrid integration |
+| 🏆 Best RL Model   | `logs/run_20250531_131322/td3_hems_best.zip` | 12.80     | Use of only RL    |
 
 ---
 
