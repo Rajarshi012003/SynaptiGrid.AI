@@ -2,7 +2,7 @@
 
 A sophisticated controller powered by **Spiking Neural Networks (SNN)** and **Reinforcement Learning (RL)** to optimize home energy usage, comfort, and environmental sustainability.
 
-![HEMS Dashboard](hems_dashboard_screenshot.png)
+![HEMS Dashboard](hems_dashboard.png)
 
 ---
 
